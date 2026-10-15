@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Romaneio · Rotas e Custos</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f5c43'/%3E%3Ctext x='16' y='22' font-size='17' font-family='monospace' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/print.css" media="print">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">R</span>
+      <div>
+        <strong>Romaneio</strong>
+        <small>Rotas otimizadas e custo por viagem</small>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="planner" role="tab">Planejar rota</button>
+      <button class="tab" data-tab="history" role="tab">Histórico</button>
+      <button class="tab" data-tab="settings" role="tab">Configurações</button>
+    </nav>
+  </header>
+
+  <div id="message_box" class="message" hidden role="status"></div>
+
+  <main>
+    <section id="tab_planner" class="tab-panel">
+      <div id="upload_card" class="card"></div>
+      <div id="stops_card" class="card" hidden></div>
+      <div id="route_card" class="card" hidden></div>
+    </section>
+
+    <section id="tab_history" class="tab-panel" hidden></section>
+    <section id="tab_settings" class="tab-panel" hidden></section>
+  </main>
+
+  <div id="print_area" aria-hidden="true"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

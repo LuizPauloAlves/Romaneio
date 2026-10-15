@@ -1,0 +1,24 @@
+/* Impressão / PDF: mostra só o relatório montado em #print_area. */
+
+@page { size: A4; margin: 14mm; }
+
+body { background: #fff; color: #000; font-size: 11pt; }
+.app-header, main, .message { display: none !important; }
+#print_area { display: block !important; }
+
+.report h1 { font-size: 18pt; margin: 0 0 4px; }
+.report h2 { font-size: 12pt; margin: 18px 0 8px; border-bottom: 1px solid #000; padding-bottom: 2px; }
+.report-header p { margin: 2px 0; }
+.report table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+.report th, .report td { padding: 5px 6px; border-bottom: 1px solid #bbb; text-align: left; vertical-align: top; }
+.report th { font-size: 8pt; text-transform: uppercase; }
+.report .num { text-align: right; white-space: nowrap; }
+.report tr.late td { background: #f3f3f3; }
+.report .total td { font-weight: 700; border-top: 2px solid #000; }
+.report .group-tag { font-size: 7pt; color: #555; margin-right: 4px; }
+.report .url { font-size: 7.5pt; word-break: break-all; color: #333; }
+.report-links li { margin-bottom: 6px; }
+.report .muted, .report small { color: #555; }
+.report-footer { margin-top: 24px; font-size: 8pt; color: #555; }
+.page-break { break-before: page; }
+tr { break-inside: avoid; }
