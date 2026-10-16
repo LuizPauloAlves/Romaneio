@@ -3,11 +3,13 @@
 
 import { OSM_CONFIG } from '../config/app_config.js';
 
-// Resultados nesses níveis são só a cidade ou o bairro: o ponto fica marcado como aproximado.
-const CITY_LEVEL_TYPES = new Set([
+// Resultados nesses níveis são só a cidade ou o bairro.
+const AREA_TYPES = new Set([
   'city', 'town', 'municipality', 'village', 'county', 'state', 'region', 'country',
   'suburb', 'neighbourhood', 'quarter', 'city_district', 'postcode',
 ]);
+// Resultados nesses níveis são só a rua (sem número da casa).
+const ROAD_TYPES = new Set(['road', 'highway', 'residential', 'pedestrian', 'footway', 'path', 'service', 'track', 'living_street']);
 
 let last_request_at = 0;
 
@@ -18,6 +20,7 @@ export async function search_nominatim(query, bias_point = null) {
     q: query,
     format: 'jsonv2',
     limit: '1',
+    addressdetails: '1',
     countrycodes: 'br',
     'accept-language': 'pt-BR',
   });
@@ -31,8 +34,15 @@ export async function search_nominatim(query, bias_point = null) {
     lat: Number(place.lat),
     lng: Number(place.lon),
     formatted_address: place.display_name,
-    city_level: CITY_LEVEL_TYPES.has(place.addresstype),
+    precision: precision_of(place),
   };
+}
+
+function precision_of(place) {
+  if (place.address?.house_number) return 'exact';
+  if (AREA_TYPES.has(place.addresstype)) return 'approximate';
+  if (ROAD_TYPES.has(place.addresstype)) return 'street';
+  return 'exact'; // comércio, prédio, ponto de interesse
 }
 
 async function wait_rate_limit() {

@@ -5,6 +5,7 @@ import { render_route_view } from './route_view.js';
 import { locate_stops, plan_route } from '../services/route_planner.js';
 import { open_map_picker } from './map_picker.js';
 import { save_manual_location } from '../maps/geocoder.js';
+import { take_google_problem } from '../maps/google_geocode_client.js';
 import { find_vehicle, get_settings } from '../storage/storage_repository.js';
 import { escape_html, query, set_busy, show_message } from '../utils/dom_utils.js';
 import { to_number } from '../utils/format_utils.js';
@@ -14,9 +15,10 @@ export function render_stops_view() {
   card.hidden = false;
   card.innerHTML = `
     <h2><span class="step">2</span> Paradas <small class="muted">(${app_state.draft_stops.length})</small></h2>
-    <p class="muted">Endereços <strong>não encontrados</strong> ou <strong>aproximados</strong> (só a cidade) devem ser marcados no mapa pelo botão 📍.
+    <p class="muted">Endereços <strong>não encontrados</strong> ou <strong>aproximados</strong> (só a cidade ou a rua) devem ser marcados no mapa pelo botão 📍.
       O local marcado fica salvo: na próxima vez esse endereço já é encontrado.
       Preencha a janela só para quem tem horário de recebimento.</p>
+    ${render_import_warnings(app_state.import_warnings)}
     <div class="table-scroll">
       <table class="edit-table">
         <thead><tr><th>#</th><th>Cliente</th><th>Endereço</th><th>Recebe de</th><th>até</th><th>Parada</th><th>Local</th><th></th></tr></thead>
@@ -29,6 +31,12 @@ export function render_stops_view() {
     </div>`;
 
   bind_events(card);
+}
+
+function render_import_warnings(warnings) {
+  if (warnings.length === 0) return '';
+  return `<div class="warning-box"><strong>Avisos da planilha</strong>
+    <ul>${warnings.map((warning) => `<li>${escape_html(warning)}</li>`).join('')}</ul></div>`;
 }
 
 function render_row(stop, index) {
@@ -51,10 +59,14 @@ function render_row(stop, index) {
 function render_status(stop) {
   if (stop.not_found) return `<span class="badge badge--error" title="${escape_html(stop.error ?? '')}">Não encontrado</span>`;
   if (stop.lat != null && stop.approximate) {
-    return `<span class="badge badge--warn">Aproximado</span> <small>só a cidade foi encontrada, marque no mapa 📍</small>`;
+    return `<span class="badge badge--warn">Aproximado</span> <small>local não exato${render_source(stop)}, marque no mapa 📍</small>`;
   }
-  if (stop.lat != null) return `<span class="badge badge--ok">✓</span> <small>${escape_html(stop.formatted_address)}</small>`;
+  if (stop.lat != null) return `<span class="badge badge--ok">✓</span> <small>${escape_html(stop.formatted_address)}${render_source(stop)}</small>`;
   return '<span class="badge">Pendente</span>';
+}
+
+function render_source(stop) {
+  return stop.source === 'google' ? ' · via Google' : '';
 }
 
 function bind_events(card) {
@@ -154,7 +166,10 @@ function report_location_problems() {
   const approximate = app_state.draft_stops.filter((stop) => stop.approximate).length;
   const problems = [
     missing && `${missing} não encontrado(s) ficaram fora da rota`,
-    approximate && `${approximate} aproximado(s) (só a cidade)`,
+    approximate && `${approximate} com local aproximado`,
   ].filter(Boolean);
   if (problems.length > 0) show_message(`${problems.join(' e ')}. Marque no mapa 📍 e calcule de novo.`, 'error');
+
+  const google_problem = take_google_problem();
+  if (google_problem) show_message(google_problem, 'error');
 }

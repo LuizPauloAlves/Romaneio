@@ -1,8 +1,8 @@
 // Blocos e ações reaproveitados pela tela de resultado e pelo histórico:
-// links do Maps, envio por WhatsApp e impressão.
+// links do Maps, envio por WhatsApp, comprovantes de entrega e relatório.
 
 import { build_whatsapp_message, build_whatsapp_url } from '../reports/whatsapp_message.js';
-import { print_route_report } from './print_service.js';
+import { print_route_report, print_delivery_receipts } from './print_service.js';
 import { copy_to_clipboard, escape_html, show_message } from '../utils/dom_utils.js';
 
 export function render_links_block(route) {
@@ -18,7 +18,8 @@ export function render_links_block(route) {
     <div class="actions">
       <button type="button" class="button button--whatsapp" data-action="whatsapp">Enviar pelo WhatsApp Web</button>
       <button type="button" class="button" data-action="copy_message">Copiar mensagem</button>
-      <button type="button" class="button" data-action="print">Imprimir / PDF</button>
+      <button type="button" class="button button--primary" data-action="print_receipts">Imprimir comprovantes de entrega</button>
+      <button type="button" class="button" data-action="print">Relatório da rota / PDF</button>
     </div>`;
 }
 
@@ -40,6 +41,8 @@ export function bind_route_actions(container, get_route) {
       await copy_with_feedback(build_whatsapp_message(route), 'Mensagem copiada. Cole na conversa do entregador.');
     } else if (target.dataset.action === 'print') {
       print_route_report(route);
+    } else if (target.dataset.action === 'print_receipts') {
+      print_delivery_receipts(route);
     }
   });
 }

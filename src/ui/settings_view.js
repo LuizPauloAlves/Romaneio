@@ -67,6 +67,10 @@ export function render_settings_view() {
         <label class="field"><span>Tempo padrão por parada</span>
           <div class="field-input"><input name="default_service_minutes" type="number" min="0" value="${settings.default_service_minutes}"><em>min</em></div>
         </label>
+        <label class="field"><span>Senha de acesso (só se definida na Vercel)</span>
+          <div class="field-input"><input name="access_token" type="password" value="${escape_html(settings.access_token ?? '')}" autocomplete="off"></div>
+          <small>Usada apenas na busca extra pelo Google. Deixe vazio se não definiu senha.</small>
+        </label>
       </div>
       <div class="actions">
         <button type="button" class="button" id="locate_base_button">Localizar base</button>
@@ -146,6 +150,7 @@ function save_general_settings(form) {
     ...settings,
     base,
     default_service_minutes: to_number(form.elements.default_service_minutes.value, 10),
+    access_token: form.elements.access_token.value.trim(),
   });
 }
 

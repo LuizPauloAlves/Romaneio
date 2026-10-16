@@ -1,13 +1,13 @@
-// Passo 1: carregar o .txt (ou colar o texto) e definir data, saída, veículo e tipo de rota.
+// Passo 1: carregar a planilha do romaneio (ou colar do Excel) e definir data, saída, veículo e tipo de rota.
 
 import { app_state } from './app_state.js';
 import { render_stops_view } from './stops_view.js';
 import { render_fields, read_fields } from './form_fields.js';
-import { parse_romaneio_text, decode_text_file } from '../parsing/txt_parser.js';
+import { read_romaneio_file, parse_pasted_text, ACCEPTED_EXTENSIONS } from '../parsing/romaneio_file_reader.js';
 import { get_settings, get_vehicles } from '../storage/storage_repository.js';
-import { APP_CONFIG, ROUTE_TYPES } from '../config/app_config.js';
+import { APP_CONFIG, ROUTE_TYPES, TEMPLATE_FILES } from '../config/app_config.js';
 import { today_iso } from '../utils/time_utils.js';
-import { query, show_message } from '../utils/dom_utils.js';
+import { escape_html, query, show_message } from '../utils/dom_utils.js';
 
 function option_fields() {
   return [
@@ -36,13 +36,16 @@ export function render_upload_view() {
     <h2><span class="step">1</span> Romaneio e saída</h2>
     <form id="upload_form">
       <label class="drop-zone" id="drop_zone">
-        <input type="file" id="txt_file" accept=".txt,text/plain">
-        <strong>Escolha o arquivo .txt</strong>
+        <input type="file" id="romaneio_file" accept="${ACCEPTED_EXTENSIONS}">
+        <strong>Escolha a planilha do romaneio (.xlsx ou .csv)</strong>
         <span id="file_name">ou arraste e solte aqui</span>
       </label>
+      <p class="template-links">Modelos para preencher:
+        ${TEMPLATE_FILES.map((file) => `<a href="${file.url}" download>${escape_html(file.label)}</a>`).join(' · ')}
+      </p>
       <details class="paste-box">
-        <summary>Prefiro colar o texto</summary>
-        <textarea id="txt_paste" rows="6" placeholder="1. CLIENTE – 1 caixa – Pedido 123&#10;Endereço completo"></textarea>
+        <summary>Prefiro colar direto do Excel</summary>
+        <textarea id="romaneio_paste" rows="6" placeholder="Selecione as linhas no Excel (com o cabeçalho Cliente, Endereço, CEP, Pacotes, NF, A vista, Boleto), copie e cole aqui."></textarea>
       </details>
       <div class="field-grid">${render_fields(option_fields(), defaults)}</div>
       <div class="actions">
@@ -55,7 +58,7 @@ export function render_upload_view() {
 
 function bind_events(card) {
   const form = query('#upload_form', card);
-  const file_input = query('#txt_file', card);
+  const file_input = query('#romaneio_file', card);
   const drop_zone = query('#drop_zone', card);
 
   file_input.addEventListener('change', () => {
@@ -72,23 +75,27 @@ function bind_events(card) {
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const text = await read_input_text(file_input, query('#txt_paste', card));
-    if (!text.trim()) return show_message('Escolha um arquivo .txt ou cole o texto do romaneio.', 'error');
-
-    const stops = parse_romaneio_text(text);
-    if (stops.length === 0) return show_message('Não encontrei endereços no texto. Confira o formato.', 'error');
+    let result;
+    try {
+      result = await read_input(file_input.files[0], query('#romaneio_paste', card).value);
+    } catch (error) {
+      return show_message(error.message, 'error');
+    }
+    if (result.stops.length === 0) return show_message('Não encontrei entregas na planilha. Confira se as linhas têm Cliente e Endereço.', 'error');
 
     app_state.route_options = read_fields(form, option_fields());
-    app_state.draft_stops = stops.map(to_draft_stop);
+    app_state.draft_stops = result.stops.map(to_draft_stop);
+    app_state.import_warnings = result.warnings;
     render_stops_view();
-    show_message(`${stops.length} paradas lidas. Confira endereços e horários.`, 'success');
+    const warning_note = result.warnings.length > 0 ? ` ${result.warnings.length} aviso(s) na planilha.` : '';
+    show_message(`${result.stops.length} entregas lidas. Confira endereços e horários.${warning_note}`, result.warnings.length ? 'error' : 'success');
   });
 }
 
-async function read_input_text(file_input, paste_area) {
-  const file = file_input.files[0];
-  if (file) return decode_text_file(await file.arrayBuffer());
-  return paste_area.value;
+async function read_input(file, pasted_text) {
+  if (file) return read_romaneio_file(file);
+  if (pasted_text.trim()) return parse_pasted_text(pasted_text);
+  throw new Error('Escolha a planilha do romaneio (.xlsx ou .csv) ou cole as linhas do Excel.');
 }
 
 function to_draft_stop(stop) {

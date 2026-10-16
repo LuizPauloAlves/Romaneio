@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse_romaneio_text, decode_text_file } from '../src/parsing/txt_parser.js';
+import { parse_romaneio_text } from '../src/parsing/txt_parser.js';
+import { decode_text_file } from '../src/parsing/text_decoder.js';
 
 const SAMPLE = `1. CINTIA RAMOS DE PAULA “NEBLINA” – 1 caixa Quadrada – Pedido 18182
 Restaurante Neblina, Km 64 – Paraibuna – SP, 12260-000

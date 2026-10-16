@@ -2,9 +2,10 @@
 // Retorna uma Promise com { lat, lng } ou null se cancelado.
 
 import { load_leaflet, create_base_map } from '../maps/leaflet_loader.js';
+import { APP_CONFIG } from '../config/app_config.js';
 import { escape_html, show_message } from '../utils/dom_utils.js';
 
-const DEFAULT_CENTER = { lat: -23.386, lng: -45.662 }; // Paraibuna
+const DEFAULT_CENTER = APP_CONFIG.default_base;
 
 export async function open_map_picker({ title, address, start_point }) {
   let L;

@@ -57,7 +57,7 @@ function render_warnings(route) {
     ...route.stops.filter((stop) => stop.late_minutes > 0)
       .map((stop) => `${escape_html(stop.client || stop.address)}: chegada ${stop.arrival_time}, limite ${stop.window_end} (${stop.late_minutes} min de atraso)`),
     ...route.stops.filter((stop) => stop.approximate)
-      .map((stop) => `${escape_html(stop.client || stop.address)}: local aproximado (centro da cidade), marque no mapa 📍 e recalcule`),
+      .map((stop) => `${escape_html(stop.client || stop.address)}: local aproximado (só a cidade ou a rua foi encontrada), marque no mapa 📍 e recalcule`),
     ...route.skipped_stops.map((stop) => `${escape_html(stop.client || stop.address)}: endereço não encontrado, ficou fora da rota`),
   ];
   if (warnings.length === 0) return '';

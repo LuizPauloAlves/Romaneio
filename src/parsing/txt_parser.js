@@ -1,3 +1,4 @@
+// Formato antigo (.txt), mantido por compatibilidade. O formato principal agora é a planilha.
 // Lê o texto do romaneio (.txt) e devolve a lista de paradas.
 //
 // Formato esperado (uma entrega por bloco):
@@ -10,15 +11,6 @@
 const HEADER_PATTERN = /^\s*(\d{1,3})\s*(?:[.)]|\s[-–—])\s*(.+)$/;
 const ORDER_PATTERN = /pedido\s*(?:n[º°o.]*)?\s*:?\s*(\d+)/i;
 const PART_SEPARATOR = /\s+[-–—]\s+/;
-
-export function decode_text_file(array_buffer) {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(array_buffer);
-  } catch {
-    // Bloco de notas antigo do Windows salva em ANSI (windows-1252).
-    return new TextDecoder('windows-1252').decode(array_buffer);
-  }
-}
 
 export function parse_romaneio_text(text) {
   const lines = split_lines(text);

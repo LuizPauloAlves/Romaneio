@@ -13,7 +13,7 @@ const KEYS = Object.freeze({
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
-  base: { address: APP_CONFIG.default_base_address, lat: null, lng: null, formatted_address: '', approximate: false },
+  base: { ...APP_CONFIG.default_base },
   default_service_minutes: APP_CONFIG.default_service_minutes,
 });
 
@@ -35,7 +35,16 @@ function write(key, value) {
 }
 
 // Configurações
-export const get_settings = () => ({ ...DEFAULT_SETTINGS, ...read(KEYS.settings, DEFAULT_SETTINGS) });
+export function get_settings() {
+  const settings = { ...DEFAULT_SETTINGS, ...read(KEYS.settings, DEFAULT_SETTINGS) };
+  return { ...settings, base: upgrade_legacy_base(settings.base) };
+}
+
+// Quem usou a versão anterior tinha a base só por endereço (sem coordenadas): troca pela base fixa.
+function upgrade_legacy_base(base) {
+  const is_legacy = base.address === APP_CONFIG.legacy_base_address && (base.lat == null || base.approximate);
+  return is_legacy ? { ...APP_CONFIG.default_base } : base;
+}
 export const save_settings = (settings) => write(KEYS.settings, settings);
 
 // Veículos (já preparado para mais de um)

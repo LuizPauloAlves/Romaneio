@@ -1,7 +1,15 @@
 // Configurações gerais da aplicação (valores que não dependem do veículo).
 
 export const APP_CONFIG = Object.freeze({
-  default_base_address: 'Rod. dos Tamoios, 60km - Espigão, Paraibuna - SP',
+  // Base da Fiorino (saída e chegada de todas as rotas). Pode ser alterada em Configurações.
+  default_base: Object.freeze({
+    address: 'Base – Rod. dos Tamoios, 60km - Espigão, Paraibuna - SP',
+    lat: -23.557128,
+    lng: -45.519515,
+    formatted_address: 'Base (coordenadas fixas)',
+    approximate: false,
+  }),
+  legacy_base_address: 'Rod. dos Tamoios, 60km - Espigão, Paraibuna - SP',
   default_service_minutes: 10,
   default_departure_time: '08:00',
 
@@ -11,6 +19,13 @@ export const APP_CONFIG = Object.freeze({
 
   // Quantas rotas reais recentes entram na média de consumo aprendido.
   learning_window: 4,
+
+  // Segunda opinião do Google quando o OpenStreetMap não acha bem o endereço.
+  // Precisa da função /api/geocode_google com a chave na Vercel; sem ela, é ignorado.
+  google_fallback: Object.freeze({
+    endpoint: 'geocode_google',
+    cache_days: 30, // o Google só permite guardar coordenadas dele por até 30 dias
+  }),
 
   storage_prefix: 'romaneio:',
 });
@@ -27,6 +42,23 @@ export const OSM_CONFIG = Object.freeze({
   leaflet_js: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   leaflet_css: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
 });
+
+// Empresa (cabeçalho e rodapé do comprovante de entrega).
+export const COMPANY_CONFIG = Object.freeze({
+  name: 'QUEIJOS DO REI LATICÍNIOS LTDA',
+  logo_url: 'assets/logo_queijos_do_rei.png',
+});
+
+export const RECEIPT_CONFIG = Object.freeze({
+  receipts_per_page: 5,
+});
+
+// Modelos de planilha para download na tela inicial.
+export const TEMPLATE_FILES = Object.freeze([
+  { label: 'Modelo Excel (.xlsx)', url: 'exemplos/modelo_romaneio.xlsx' },
+  { label: 'Modelo CSV', url: 'exemplos/modelo_romaneio.csv' },
+  { label: 'Exemplo preenchido (.csv)', url: 'exemplos/exemplo_romaneio.csv' },
+]);
 
 export const ROUTE_TYPES = Object.freeze({
   delivery: 'Entrega',

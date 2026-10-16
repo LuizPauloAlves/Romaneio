@@ -253,3 +253,7 @@ tr.late td { background: var(--warn-soft); }
 @media (max-width: 640px) {
   .route-map { height: 300px; }
 }
+
+/* Links dos modelos de planilha */
+.template-links { margin: -4px 0 14px; font-size: 0.88rem; color: var(--muted); }
+.template-links a { color: var(--accent); font-weight: 500; }
