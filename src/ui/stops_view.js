@@ -149,6 +149,7 @@ async function run_plan(button) {
       departure_time: options.departure_time,
       date: options.date,
       type: options.type,
+      objective: options.objective,
       tolls: options.tolls,
       freight: options.freight,
     });

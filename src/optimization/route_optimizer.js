@@ -4,14 +4,16 @@
 //   1. Gera ordens iniciais (vizinho mais próximo, mais urgente primeiro e aleatórias).
 //   2. Melhora cada uma com busca local: mover uma parada (relocate) e inverter trechos (2-opt).
 //   3. Fica com a melhor.
+// O que é "melhor" vem de score_route (menor tempo, combustível ou custo, ver route_objectives.js).
 
-import { simulate_route, route_score } from './route_simulator.js';
+import { simulate_route } from './route_simulator.js';
+import { score_by_time } from './route_objectives.js';
 
 const DEFAULT_RANDOM_STARTS = 12;
 const DEFAULT_TIME_BUDGET_MS = 2000;
 
-export function optimize_route({ matrix, stops, departure_minutes, random_starts = DEFAULT_RANDOM_STARTS, time_budget_ms = DEFAULT_TIME_BUDGET_MS, seed = 42 }) {
-  const context = { matrix, stops, departure_minutes };
+export function optimize_route({ matrix, stops, departure_minutes, score_route = score_by_time, random_starts = DEFAULT_RANDOM_STARTS, time_budget_ms = DEFAULT_TIME_BUDGET_MS, seed = 42 }) {
+  const context = { matrix, stops, departure_minutes, score_route };
   if (stops.length === 0) return evaluate([], context);
 
   const random = create_random(seed);
@@ -31,9 +33,9 @@ export function optimize_route({ matrix, stops, departure_minutes, random_starts
   return best;
 }
 
-function evaluate(order, context) {
-  const simulation = simulate_route({ ...context, order });
-  return { order, simulation, score: route_score(simulation) };
+function evaluate(order, { score_route, ...simulation_context }) {
+  const simulation = simulate_route({ ...simulation_context, order });
+  return { order, simulation, score: score_route(simulation) };
 }
 
 function improve_with_local_search(initial_order, context, deadline) {

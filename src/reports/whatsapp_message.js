@@ -1,6 +1,7 @@
 // Texto do romaneio para enviar ao entregador pelo WhatsApp.
 
 import { format_date, format_km, format_duration } from '../utils/format_utils.js';
+import { describe_refrigeration_instruction } from './fuel_summary.js';
 
 export function build_whatsapp_message(route) {
   const header = [
@@ -22,7 +23,8 @@ export function build_whatsapp_message(route) {
 
   const links = route.links.map((link, index) => `🗺️ Rota ${index + 1} (${link.label}):\n${link.url}`);
 
-  return [header.join('\n'), stops.join('\n\n'), links.join('\n\n')].join('\n\n');
+  const refrigeration = describe_refrigeration_instruction(route);
+  return [header.join('\n'), stops.join('\n\n'), refrigeration, links.join('\n\n')].filter(Boolean).join('\n\n');
 }
 
 export function build_whatsapp_url(message) {

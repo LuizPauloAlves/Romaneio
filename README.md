@@ -63,13 +63,13 @@ Depois de calcular a rota, o botão **Imprimir comprovantes de entrega** gera um
    Endereço: Av. Cassiano Ricardo, 521 - …         À vista (   ) Boleto ( X )
    Nome: ____________________          Assinatura: ____________________
    RG ou CPF: ______________   Data de entrega: 16/10/2026   Horário: ___:___
-                      QUEIJOS DO REI LATICÍNIOS LTDA
+                      LATICÍNIOS QUEIJOS DO REI LTDA
 ```
 
 - **Nome, RG ou CPF e Assinatura** ficam em branco para quem recebe preencher.
 - **Data de entrega** já vem preenchida com a data da rota escolhida na tela inicial.
 - **Horário** fica em branco para o entregador preencher.
-- Cabeçalho com o logo da Queijos do Rei e o número da página (PG. 1, PG. 2…). Rodapé com "QUEIJOS DO REI LATICÍNIOS LTDA" centralizado.
+- Cabeçalho com o logo da Queijos do Rei e o número da página (PG. 1, PG. 2…). Rodapé com "LATICÍNIOS QUEIJOS DO REI LTDA" centralizado.
 - O número no círculo é a ordem da entrega na rota.
 - Para salvar em PDF, escolha **Salvar como PDF** na janela de impressão. Use o Chrome ou o Edge e deixe a escala em 100%.
 - Nome da empresa, logo e comprovantes por página ficam em `src/config/app_config.js` (`COMPANY_CONFIG` e `RECEIPT_CONFIG`). O logo é o arquivo `assets/logo_queijos_do_rei.png`.
@@ -88,6 +88,40 @@ Antes de procurar no mapa, o sistema troca as abreviações mais comuns pelas pa
 - abreviações que também são palavras comuns (Bar., Faz., Mal., Ver.…) só valem com ponto.
 
 O comprovante e a mensagem do WhatsApp mostram o endereço como foi digitado. A expansão serve só para a busca. A lista fica em `src/maps/address_abbreviations.js`, e para incluir uma abreviação basta acrescentar uma linha na tabela.
+
+---
+
+## Combustível e refrigeração
+
+Na entrega, a refrigeração do baú fica ligada da base até a última entrega. Na volta, com a carga já entregue, ela é desligada e o motor gasta menos. O cálculo separa os dois trechos:
+
+- **Com refrigeração:** consumo sem refrigeração ÷ (1 + aumento %). Com 11 km/l e 19% de aumento, dá 9,2 km/l.
+- **Sem refrigeração (volta para a base):** o consumo normal, 11 km/l.
+
+Por isso o sentido da rota importa. Fazer as mesmas entregas na ordem inversa roda os mesmos km, mas, se a última entrega for a mais distante da base, a volta longa é feita com a refrigeração desligada, e isso gasta menos.
+
+**Otimizar a rota por** (tela inicial):
+- **Menor gasto de combustível** (padrão): busca a ordem com menos litros, considerando a refrigeração. Pode aceitar alguns km a mais se isso tirar muitos km da parte refrigerada.
+- **Menor custo total:** combustível com refrigeração, mais manutenção, pneus, custos fixos por km e o tempo do motorista.
+- **Menor tempo:** a rota mais rápida. Entre duas rotas com o mesmo tempo, escolhe o sentido que gasta menos combustível.
+
+As janelas de horário dos clientes continuam valendo nos três modos: atrasar uma entrega pesa muito mais que qualquer economia.
+
+Depois do cálculo, o site mostra:
+- quantos km a rota roda com a refrigeração ligada e quantos com ela desligada;
+- a comparação com a rota mais rápida: litros e R$ de combustível economizados, minutos e km a mais e a diferença no custo total.
+
+A mensagem do WhatsApp avisa o entregador em qual parada desligar a refrigeração.
+
+**Configuração (Configurações → veículo):**
+- *Consumo sem refrigeração* (km/l);
+- *Aumento com refrigeração ligada* (%). O padrão é 19%, valor medido em um estudo com caminhonete refrigerada e compressor ligado ao motor por correia (Fabris et al., 2022, Universidade de Pádua). Use 0 para um veículo sem refrigeração; aí o cálculo vira só a menor distância.
+
+**Coleta (ex.: leite):** a lógica se inverte. A refrigeração fica desligada na ida até a primeira coleta e ligada depois que a carga entra.
+
+**Aprendizado:** quando você lança o gasto real, o site compara o consumo real com o consumo previsto para aquela rota, já com a parte refrigerada. As próximas estimativas ajustam as duas faixas pela média das últimas 4 rotas.
+
+**Quando compensa.** Com 19% de diferença, cada km que passa da parte refrigerada para a volta sem refrigeração economiza cerca de R$ 0,11 de gasolina. Já cada km a mais na rota custa cerca de R$ 0,58 de combustível, mais o desgaste. Na prática, o maior ganho vem de escolher o sentido certo da rota, que não acrescenta km. Desvios só compensam quando tiram muitos km da parte refrigerada, e a comparação com a rota mais rápida mostra se compensou.
 
 ---
 
@@ -166,14 +200,22 @@ src/
     distance_matrix.js      matriz para o otimizador
     leaflet_loader.js       carrega o mapa sob demanda
     maps_link_builder.js    links do Google Maps (divide a cada 9 paradas)
-  optimization/             simulação de horários e otimização da ordem
-  costs/                    cálculo único de custos (previsto e real) e consumo aprendido
+  optimization/
+    route_simulator.js      horários, esperas, atrasos e km do primeiro e do último trecho
+    route_optimizer.js      busca a melhor ordem (vizinho mais próximo + busca local)
+    route_objectives.js     o que é "melhor": menor combustível, menor custo total ou menor tempo
+  costs/
+    fuel_model.js           consumo com e sem refrigeração, por trecho da rota
+    cost_calculator.js      composição de custos (usada no previsto e no real)
+    cost_estimator.js       custo previsto da rota
+    real_cost_calculator.js custo real e aprendizado do consumo
   services/route_planner.js orquestra o planejamento completo
   storage/                  salvamento no navegador e backup .json
   reports/
     delivery_receipts.js    comprovantes de entrega (páginas A4 com cabeçalho e rodapé)
     report_builder.js       relatório da rota para impressão
-    whatsapp_message.js     mensagem para o entregador
+    whatsapp_message.js     mensagem para o entregador (inclui quando desligar a refrigeração)
+    fuel_summary.js         textos de combustível, refrigeração e comparação com a rota mais rápida
     cost_tables.js          tabelas de custo previsto e real
   ui/                       uma tela/componente por arquivo (inclui mapa da rota e seletor no mapa)
   utils/                    formatação, horários, atalhos de página
@@ -196,7 +238,7 @@ tests/                      testes automáticos (precisam de Node.js: npm test)
 
 | Item | Cálculo |
 |---|---|
-| Combustível | km ÷ km/l × preço do litro (no real: valor gasto informado) |
+| Combustível | km com refrigeração ÷ km/l com refrigeração + km sem refrigeração ÷ km/l sem, × preço do litro (no real: valor gasto informado) |
 | Manutenção preventiva, preditiva e corretiva | km × R$/km de cada uma |
 | Pneus | km × (preço do jogo ÷ vida útil em km) |
 | Seguro, IPVA, licenciamento, rastreador | km × (valor anual ÷ km rodados por ano) |

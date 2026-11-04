@@ -1,10 +1,9 @@
 // Simula a rota em uma ordem de paradas: horários de chegada, esperas e atrasos.
+// Também separa a distância do primeiro trecho (base → 1ª parada) e do último
+// (última parada → base), usados no cálculo da refrigeração ligada/desligada.
 //
 // Índices da matriz: 0 = base, 1..n = paradas (na mesma ordem da lista `stops`).
 // Tempos da matriz em segundos e distâncias em metros.
-
-const LATE_PENALTY_PER_MINUTE = 1000;
-const DISTANCE_WEIGHT_PER_KM = 0.1;
 
 export function simulate_route({ order, matrix, stops, departure_minutes }) {
   let clock = departure_minutes;
@@ -31,8 +30,10 @@ export function simulate_route({ order, matrix, stops, departure_minutes }) {
     previous = node;
   }
 
+  const first_leg_m = order.length > 0 ? matrix.distances[0][order[0]] : 0;
+  const last_leg_m = matrix.distances[previous][0];
   driving_s += matrix.durations[previous][0];
-  distance_m += matrix.distances[previous][0];
+  distance_m += last_leg_m;
   clock += matrix.durations[previous][0] / 60;
 
   return {
@@ -41,12 +42,8 @@ export function simulate_route({ order, matrix, stops, departure_minutes }) {
     total_minutes: clock - departure_minutes,
     driving_minutes: driving_s / 60,
     distance_km: distance_m / 1000,
+    first_leg_km: first_leg_m / 1000,
+    last_leg_km: last_leg_m / 1000,
     late_minutes: total_late,
   };
-}
-
-export function route_score(simulation) {
-  return simulation.total_minutes
-    + simulation.distance_km * DISTANCE_WEIGHT_PER_KM
-    + simulation.late_minutes * LATE_PENALTY_PER_MINUTE;
 }

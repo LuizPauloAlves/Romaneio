@@ -5,8 +5,10 @@ import { geocode } from '../maps/geocoder.js';
 import { build_distance_matrix, find_unreachable_points } from '../maps/distance_matrix.js';
 import { build_maps_links } from '../maps/maps_link_builder.js';
 import { optimize_route } from '../optimization/route_optimizer.js';
+import { build_route_scorer, DEFAULT_OBJECTIVE } from '../optimization/route_objectives.js';
 import { estimate_route_cost } from '../costs/cost_estimator.js';
-import { compute_learned_km_per_liter } from '../costs/real_cost_calculator.js';
+import { build_consumption, split_distance_by_refrigeration } from '../costs/fuel_model.js';
+import { compute_consumption_learning } from '../costs/real_cost_calculator.js';
 import { APP_CONFIG } from '../config/app_config.js';
 import { get_routes, get_settings, save_settings } from '../storage/storage_repository.js';
 import { parse_hhmm, format_hhmm } from '../utils/time_utils.js';
@@ -41,7 +43,7 @@ export async function locate_base() {
   return base;
 }
 
-export async function plan_route({ stops, vehicle, departure_time, date, type, tolls = 0, freight = 0 }) {
+export async function plan_route({ stops, vehicle, departure_time, date, type, objective = DEFAULT_OBJECTIVE, tolls = 0, freight = 0 }) {
   const located = stops.filter((stop) => stop.lat != null);
   if (located.length === 0) throw new Error('Nenhum endereço localizado. Corrija os endereços e tente de novo.');
 
@@ -50,17 +52,31 @@ export async function plan_route({ stops, vehicle, departure_time, date, type, t
   ensure_all_reachable(matrix, located);
 
   const departure_minutes = parse_hhmm(departure_time) ?? parse_hhmm(APP_CONFIG.default_departure_time);
-  const optimization_stops = located.map(to_optimization_stop);
-  const { order, simulation } = optimize_route({ matrix, stops: optimization_stops, departure_minutes });
+  const learning = compute_consumption_learning({ routes: get_routes(), vehicle, window: APP_CONFIG.learning_window });
+  const consumption_factor = learning?.factor ?? null;
+  const consumption = build_consumption(vehicle, consumption_factor ?? 1);
 
+  const context = { matrix, stops: located.map(to_optimization_stop), departure_minutes };
+  const score_route = build_route_scorer({ objective, vehicle, consumption, route_type: type });
+  const { best, fastest } = optimize_with_baseline({ context, objective, score_route, vehicle, consumption, route_type: type });
+  const { order, simulation } = best;
+
+  const estimate_for = (result) => estimate_route_cost({
+    vehicle,
+    split: split_distance_by_refrigeration(result.simulation, type),
+    total_minutes: result.simulation.total_minutes,
+    tolls,
+    consumption_factor,
+  });
+  const estimate = estimate_for(best);
   const ordered_stops = order.map((node, position) => build_ordered_stop(located[node - 1], simulation.schedule[position], position));
-  const learned_km_per_liter = compute_learned_km_per_liter({ routes: get_routes(), vehicle_id: vehicle.id, window: APP_CONFIG.learning_window });
 
   return {
     id: generate_id('rota'),
     created_at: new Date().toISOString(),
     date,
     type,
+    objective,
     vehicle_id: vehicle.id,
     vehicle_name: vehicle.name,
     departure_time: format_hhmm(departure_minutes),
@@ -77,9 +93,32 @@ export async function plan_route({ stops, vehicle, departure_time, date, type, t
       late_minutes: simulation.late_minutes,
     },
     links: build_maps_links({ base, ordered_stops }),
-    estimate: estimate_route_cost({ vehicle, distance_km: simulation.distance_km, total_minutes: simulation.total_minutes, tolls, learned_km_per_liter }),
+    estimate,
+    comparison: fastest ? compare_with_fastest(estimate, estimate_for(fastest), best, fastest) : null,
     real: null,
     real_result: null,
+  };
+}
+
+// Otimiza pelo objetivo escolhido e também pela rota mais rápida, para mostrar a diferença.
+// Como a busca é heurística, se a rota "mais rápida" sair melhor no objetivo escolhido, ela é usada.
+function optimize_with_baseline({ context, objective, score_route, vehicle, consumption, route_type }) {
+  const chosen = optimize_route({ ...context, score_route });
+  if (objective === 'time') return { best: chosen, fastest: null };
+
+  const fastest = optimize_route({ ...context, score_route: build_route_scorer({ objective: 'time', vehicle, consumption, route_type }) });
+  const best = score_route(fastest.simulation) < score_route(chosen.simulation) ? fastest : chosen;
+  return { best, fastest };
+}
+
+function compare_with_fastest(estimate, fastest_estimate, best, fastest) {
+  return {
+    same_route: best.order.join() === fastest.order.join(),
+    liters_saved: fastest_estimate.liters - estimate.liters,
+    fuel_cost_saved: fastest_estimate.fuel_cost - estimate.fuel_cost,
+    total_cost_saved: fastest_estimate.total - estimate.total,
+    minutes_added: best.simulation.total_minutes - fastest.simulation.total_minutes,
+    km_added: best.simulation.distance_km - fastest.simulation.distance_km,
   };
 }
 

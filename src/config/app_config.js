@@ -45,7 +45,7 @@ export const OSM_CONFIG = Object.freeze({
 
 // Empresa (cabeçalho e rodapé do comprovante de entrega).
 export const COMPANY_CONFIG = Object.freeze({
-  name: 'QUEIJOS DO REI LATICÍNIOS LTDA',
+  name: 'LATICÍNIOS QUEIJOS DO REI LTDA',
   logo_url: 'assets/logo_queijos_do_rei.png',
 });
 

@@ -17,7 +17,8 @@ const VEHICLE_SECTIONS = [
       { key: 'name', label: 'Nome', type: 'text', required: true, wide: true },
       { key: 'fuel_type', label: 'Combustível', options: [['gasolina', 'Gasolina'], ['etanol', 'Etanol'], ['diesel', 'Diesel']] },
       { key: 'fuel_price', label: 'Preço do litro', step: '0.01', unit: 'R$' },
-      { key: 'km_per_liter', label: 'Consumo de referência', step: '0.1', unit: 'km/l' },
+      { key: 'km_per_liter', label: 'Consumo sem refrigeração', step: '0.1', unit: 'km/l', hint: 'Ficha técnica ou média real' },
+      { key: 'refrigeration_extra_percent', label: 'Aumento com refrigeração ligada', step: '1', unit: '%', hint: '0 = sem refrigeração. Estudo: ~19% com compressor na correia' },
     ],
   },
   {

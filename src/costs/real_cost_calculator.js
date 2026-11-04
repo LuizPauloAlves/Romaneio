@@ -1,6 +1,7 @@
 // Custo real da rota (dados lançados ao final do dia) e consumo aprendido para as próximas estimativas.
 
 import { compute_cost_breakdown } from './cost_calculator.js';
+import { build_consumption } from './fuel_model.js';
 import { minutes_between } from '../utils/time_utils.js';
 
 export function compute_real_cost({ vehicle, real }) {
@@ -27,14 +28,27 @@ export function compute_real_cost({ vehicle, real }) {
   };
 }
 
-// Média do consumo real (km/l) das últimas rotas do veículo. Retorna null se não houver dados.
-export function compute_learned_km_per_liter({ routes, vehicle_id, window }) {
+// Aprende com as últimas rotas reais do veículo quanto o consumo real difere da referência.
+// factor = consumo real ÷ consumo de referência daquela rota (com a parte refrigerada já considerada).
+// Ex.: referência 9,4 km/l e real 8,5 km/l → factor 0,90 (as próximas estimativas gastam 10% a mais).
+// Retorna null se não houver gasto real lançado.
+export function compute_consumption_learning({ routes, vehicle, window }) {
   const samples = routes
-    .filter((route) => route.vehicle_id === vehicle_id && route.real_result?.km_per_liter > 0)
+    .filter((route) => route.vehicle_id === vehicle.id && route.real_result?.km_per_liter > 0)
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, window)
-    .map((route) => route.real_result.km_per_liter);
-
+    .slice(0, window);
   if (samples.length === 0) return null;
-  return samples.reduce((sum, value) => sum + value, 0) / samples.length;
+
+  // Rotas antigas (antes da refrigeração no cálculo) não guardaram a referência: usa o consumo com refrigeração.
+  const fallback_reference = build_consumption(vehicle).km_per_liter_on;
+  const factors = samples.map((route) => route.real_result.km_per_liter / (route.estimate?.reference_km_per_liter || fallback_reference));
+  return {
+    factor: average(factors),
+    average_km_per_liter: average(samples.map((route) => route.real_result.km_per_liter)),
+    samples: samples.length,
+  };
+}
+
+function average(values) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }

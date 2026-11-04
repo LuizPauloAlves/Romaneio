@@ -18,7 +18,11 @@ export const DEFAULT_VEHICLE = Object.freeze({
   name: 'Fiat Fiorino 2015',
   fuel_type: 'gasolina',
   fuel_price: FUEL_REFERENCES.gasolina.price_per_liter,
-  km_per_liter: FUEL_REFERENCES.gasolina.km_per_liter,
+  km_per_liter: FUEL_REFERENCES.gasolina.km_per_liter, // consumo SEM refrigeração
+
+  // Refrigeração do baú: quanto o consumo aumenta enquanto ela está ligada (0 = veículo sem refrigeração).
+  // Estudo com caminhonete refrigerada e compressor na correia do motor: +19% (Fabris et al., 2022).
+  refrigeration_extra_percent: 19,
 
   // Custos variáveis (R$ por km)
   preventive_per_km: 0.045,  // revisão básica R$ 320–560 a cada 10.000 km (2026)
@@ -43,6 +47,7 @@ export const DEFAULT_VEHICLE = Object.freeze({
 export const COST_SOURCES = Object.freeze([
   'Combustível: pesquisa semanal ANP, São Paulo, set–out/2026',
   'Consumo: ficha técnica Fiorino 1.4 Evo 2015 (fichacompleta.com.br)',
+  'Refrigeração: +19% de consumo com compressor acoplado ao motor (Fabris et al., 2022, Univ. de Pádua)',
   'Valor do veículo: Tabela FIPE jun/2026 (R$ 54.005)',
   'Revisões: tabela de preços de revisão 2026 (autocidade.com)',
   'Pneus: pesquisa Procon de preços de pneus, out/2025',

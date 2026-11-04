@@ -19,7 +19,7 @@ test('divide os comprovantes em páginas de 5 e numera PG. 1, PG. 2…', () => {
   assert.equal(count(html, 'class="receipt-page"'), 3);
   assert.equal(count(html, 'class="receipt"'), 12);
   assert.ok(html.includes('PG. 1') && html.includes('PG. 2') && html.includes('PG. 3'));
-  assert.equal(count(html, 'QUEIJOS DO REI LATICÍNIOS LTDA</footer>'), 3);
+  assert.equal(count(html, 'LATICÍNIOS QUEIJOS DO REI LTDA</footer>'), 3);
   assert.equal(count(html, 'assets/logo_queijos_do_rei.png'), 3);
 });
 

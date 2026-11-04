@@ -6,6 +6,8 @@ import { render_history_view } from './history_view.js';
 import { render_route_map } from './route_map.js';
 import { render_stops_table } from '../reports/report_builder.js';
 import { render_cost_table } from '../reports/cost_tables.js';
+import { describe_comparison, describe_consumption, describe_refrigeration_split } from '../reports/fuel_summary.js';
+import { ROUTE_OBJECTIVES } from '../optimization/route_objectives.js';
 import { find_route, save_route } from '../storage/storage_repository.js';
 import { format_currency, format_duration, format_km, format_number } from '../utils/format_utils.js';
 import { escape_html, query, show_message } from '../utils/dom_utils.js';
@@ -14,8 +16,9 @@ export function render_route_view(route) {
   const card = query('#route_card');
   card.hidden = false;
   card.innerHTML = `
-    <h2><span class="step">3</span> Rota otimizada</h2>
+    <h2><span class="step">3</span> Rota otimizada <small class="muted">· ${escape_html(ROUTE_OBJECTIVES[route.objective] ?? ROUTE_OBJECTIVES.time)}</small></h2>
     ${render_summary(route)}
+    ${render_fuel_box(route)}
     ${render_warnings(route)}
     <h3>Mapa da rota</h3>
     <div class="route-map" id="route_map"><p class="muted">Carregando mapa…</p></div>
@@ -24,8 +27,7 @@ export function render_route_view(route) {
     <h3>Links para o entregador</h3>
     ${render_links_block(route)}
     <h3>Custo previsto</h3>
-    <p class="muted">Consumo: ${format_number(route.estimate.km_per_liter, 2)} km/l
-      ${route.estimate.uses_learned_consumption ? '— média das últimas rotas reais' : '— referência do veículo (atualiza quando você lançar gastos reais)'}</p>
+    <p class="muted">${escape_html(describe_consumption(route.estimate))}</p>
     ${render_cost_table(route.estimate, route.freight)}
     <div class="actions">
       <button type="button" class="button button--primary" id="save_route_button">${find_route(route.id) ? 'Rota salva ✓' : 'Salvar no histórico'}</button>
@@ -47,9 +49,16 @@ function render_summary(route) {
     ['Distância', format_km(route.summary.distance_km)],
     ['Tempo total', format_duration(route.summary.total_minutes)],
     ['Volta prevista', route.summary.return_time],
+    ['Combustível previsto', `${format_number(route.estimate.liters, 1)} l · ${format_currency(route.estimate.fuel_cost)}`],
     ['Custo previsto', format_currency(route.estimate.total)],
   ];
   return `<div class="stats">${stats.map(([label, value]) => `<div class="stat"><span>${label}</span><strong>${value}</strong></div>`).join('')}</div>`;
+}
+
+function render_fuel_box(route) {
+  const lines = [describe_refrigeration_split(route.estimate), describe_comparison(route)].filter(Boolean);
+  if (lines.length === 0) return '';
+  return `<div class="info-box">${lines.map((line) => `<p>${escape_html(line)}</p>`).join('')}</div>`;
 }
 
 function render_warnings(route) {

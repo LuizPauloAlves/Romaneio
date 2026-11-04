@@ -3,7 +3,8 @@
 import { render_links_block, bind_route_actions } from './route_actions.js';
 import { render_fields, read_fields } from './form_fields.js';
 import { render_comparison_table } from '../reports/cost_tables.js';
-import { compute_real_cost, compute_learned_km_per_liter } from '../costs/real_cost_calculator.js';
+import { compute_real_cost, compute_consumption_learning } from '../costs/real_cost_calculator.js';
+import { build_consumption } from '../costs/fuel_model.js';
 import { APP_CONFIG, ROUTE_TYPES } from '../config/app_config.js';
 import { delete_route, find_route, find_vehicle, get_routes, get_vehicles, save_route } from '../storage/storage_repository.js';
 import { format_currency, format_date, format_km, format_number } from '../utils/format_utils.js';
@@ -37,10 +38,15 @@ export function render_history_view() {
 
 function render_learning_summary(routes) {
   const lines = get_vehicles().map((vehicle) => {
-    const learned = compute_learned_km_per_liter({ routes, vehicle_id: vehicle.id, window: APP_CONFIG.learning_window });
-    return learned
-      ? `<li><strong>${escape_html(vehicle.name)}</strong>: consumo real médio de ${format_number(learned, 2)} km/l (usado nas próximas estimativas)</li>`
-      : `<li><strong>${escape_html(vehicle.name)}</strong>: sem gasto real lançado, estimativas usam ${format_number(vehicle.km_per_liter, 1)} km/l</li>`;
+    const name = `<strong>${escape_html(vehicle.name)}</strong>`;
+    const learning = compute_consumption_learning({ routes, vehicle, window: APP_CONFIG.learning_window });
+    if (!learning) {
+      const { km_per_liter_on, km_per_liter_off } = build_consumption(vehicle);
+      return `<li>${name}: sem gasto real lançado. Estimativas usam ${format_number(km_per_liter_on, 1)} km/l com refrigeração e ${format_number(km_per_liter_off, 1)} km/l sem.</li>`;
+    }
+    const percent = Math.round((learning.factor - 1) * 100);
+    const adjustment = percent === 0 ? 'igual à referência' : `${Math.abs(percent)}% ${percent > 0 ? 'melhor' : 'pior'} que a referência`;
+    return `<li>${name}: consumo real médio de ${format_number(learning.average_km_per_liter, 2)} km/l nas últimas ${learning.samples} rota(s), ${adjustment}. As próximas estimativas já usam esse ajuste.</li>`;
   });
   return `<ul class="learning-list">${lines.join('')}</ul>`;
 }

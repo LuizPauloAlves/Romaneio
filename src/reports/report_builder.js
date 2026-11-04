@@ -3,6 +3,7 @@
 import { ROUTE_TYPES } from '../config/app_config.js';
 import { COST_SOURCES } from '../config/default_costs.js';
 import { render_cost_table, render_comparison_table } from './cost_tables.js';
+import { describe_comparison, describe_consumption, describe_refrigeration_split } from './fuel_summary.js';
 import { format_date, format_km, format_duration, format_number } from '../utils/format_utils.js';
 import { escape_html } from '../utils/dom_utils.js';
 
@@ -29,8 +30,8 @@ export function build_route_report_html(route) {
 
       <section class="page-break">
         <h2>Custo previsto</h2>
-        <p class="muted">Consumo usado: ${format_number(route.estimate.km_per_liter, 2)} km/l
-          ${route.estimate.uses_learned_consumption ? '(média das últimas rotas reais)' : '(referência do veículo)'}</p>
+        ${[describe_consumption(route.estimate), describe_refrigeration_split(route.estimate), describe_comparison(route)]
+          .filter(Boolean).map((line) => `<p class="muted">${escape_html(line)}</p>`).join('')}
         ${render_cost_table(route.estimate, route.freight)}
       </section>
 

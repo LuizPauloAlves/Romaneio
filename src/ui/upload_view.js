@@ -6,6 +6,7 @@ import { render_fields, read_fields } from './form_fields.js';
 import { read_romaneio_file, parse_pasted_text, ACCEPTED_EXTENSIONS } from '../parsing/romaneio_file_reader.js';
 import { get_settings, get_vehicles } from '../storage/storage_repository.js';
 import { APP_CONFIG, ROUTE_TYPES, TEMPLATE_FILES } from '../config/app_config.js';
+import { ROUTE_OBJECTIVES, DEFAULT_OBJECTIVE } from '../optimization/route_objectives.js';
 import { today_iso } from '../utils/time_utils.js';
 import { escape_html, query, show_message } from '../utils/dom_utils.js';
 
@@ -15,6 +16,7 @@ function option_fields() {
     { key: 'departure_time', label: 'Horário de saída', type: 'time', required: true },
     { key: 'vehicle_id', label: 'Veículo', options: get_vehicles().map((vehicle) => [vehicle.id, vehicle.name]) },
     { key: 'type', label: 'Tipo de rota', options: Object.entries(ROUTE_TYPES) },
+    { key: 'objective', label: 'Otimizar a rota por', options: Object.entries(ROUTE_OBJECTIVES) },
     { key: 'tolls', label: 'Pedágios previstos', step: '0.01', unit: 'R$' },
     { key: 'freight', label: 'Frete cobrado (opcional)', step: '0.01', unit: 'R$' },
   ];
@@ -27,6 +29,7 @@ export function render_upload_view() {
     departure_time: APP_CONFIG.default_departure_time,
     vehicle_id: get_vehicles()[0].id,
     type: 'delivery',
+    objective: DEFAULT_OBJECTIVE,
     tolls: 0,
     freight: 0,
     ...app_state.route_options,
