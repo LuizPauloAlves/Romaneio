@@ -35,7 +35,7 @@ export function render_stops_view() {
 
 function render_import_warnings(warnings) {
   if (warnings.length === 0) return '';
-  return `<div class="warning-box"><strong>Avisos da planilha</strong>
+  return `<div class="warning-box"><strong>Avisos para conferir</strong>
     <ul>${warnings.map((warning) => `<li>${escape_html(warning)}</li>`).join('')}</ul></div>`;
 }
 

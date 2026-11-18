@@ -35,6 +35,17 @@ Você envia o romaneio em planilha (**Excel .xlsx** ou **.csv**), o sistema loca
 
 **Base:** já vem configurada nas coordenadas -23.557128, -45.519515 (saída e chegada de todas as rotas). Para mudar, use **Configurações → 📍 Marcar base no mapa**.
 
+### Duas formas de informar as entregas
+
+Na tela inicial, escolha:
+- **📎 Anexar planilha:** envie a planilha (.xlsx ou .csv) ou cole as linhas copiadas do Excel. Veja o formato abaixo.
+- **✍️ Digitar clientes:** sem Excel. Preencha Cliente, Endereço, CEP (opcional), Pacotes, NF e escolha o Pagamento na lista.
+  - O botão **+ Adicionar cliente** cria uma nova linha embaixo.
+  - **Enter** pula para o próximo cliente; no último, cria um novo.
+  - O ✕ remove um cliente, e **Limpar lista** apaga todos.
+  - A lista fica salva neste navegador, mesmo se a página recarregar, até você limpar. A forma escolhida também fica lembrada.
+  - Linhas vazias são ignoradas. Os avisos (sem endereço, sem pagamento) indicam o número do cliente.
+
 ### Planilha do romaneio
 
 Baixe o modelo pelo site (**Modelos para preencher**, na tela inicial) ou use os arquivos da pasta `exemplos/`:
@@ -42,12 +53,14 @@ Baixe o modelo pelo site (**Modelos para preencher**, na tela inicial) ou use os
 - `modelo_romaneio.csv`: o mesmo modelo, em CSV;
 - `exemplo_romaneio.csv`: exemplo já preenchido, para testar o sistema.
 
-| Cliente | Endereço | CEP (opcional) | Pacotes | NF | A vista | Boleto |
-|---|---|---|---|---|---|---|
-| MERCEARIA AQUARIUS | Av. Cassiano Ricardo, 521 - Parque Res. Aquarius, São José dos Campos - SP | | 3 | 0000018183 | | X |
+| Cliente | Endereço | CEP (opcional) | Pacotes | NF | Pagamento |
+|---|---|---|---|---|---|
+| MERCEARIA AQUARIUS | Av. Cassiano Ricardo, 521 - Parque Res. Aquarius, São José dos Campos - SP | | 3 | 0000018183 | Boleto |
 
 - Uma entrega por linha. **Cliente** e **Endereço** são obrigatórios.
-- **A vista** e **Boleto**: marque **X** na forma de pagamento. Se não marcar nenhuma, ou marcar as duas, o site avisa.
+- **Pagamento:** no modelo Excel, clique na célula e escolha na setinha: **À vista, Boleto, Transferência, Pix ou Cartão**. No CSV, escreva uma delas; o site aceita sem acento e em maiúsculas. Se ficar vazio ou não for reconhecido, o site avisa.
+- Planilhas antigas, com as colunas **A vista** e **Boleto** marcadas com X, continuam aceitas.
+- Para incluir outra forma de pagamento, acrescente uma linha em `src/config/payment_methods.js` e na lista do modelo Excel (Dados → Validação de dados da coluna Pagamento).
 - A ordem das colunas não importa, e linhas de título acima do cabeçalho são ignoradas.
 - No modelo Excel, as colunas **NF** e **CEP** são de texto, para não perder os zeros à esquerda.
 - Linhas sem endereço ficam fora da rota. O site mostra um aviso com o número da linha do Excel.
@@ -55,17 +68,22 @@ Baixe o modelo pelo site (**Modelos para preencher**, na tela inicial) ou use os
 
 ### Comprovante de entrega
 
-Depois de calcular a rota, o botão **Imprimir comprovantes de entrega** gera um comprovante por cliente, na ordem da rota (5 por página A4):
+Depois de calcular a rota, o botão **Imprimir comprovantes de entrega** gera um comprovante por cliente, na ordem da rota:
 
 ```
-[logo]  COMPROVANTE DE ENTREGA                                     PG. 1
- ① Cliente: MERCEARIA AQUARIUS              Pacotes: 3   NF: 0000018183
-   Endereço: Av. Cassiano Ricardo, 521 - …         À vista (   ) Boleto ( X )
+[logo]  COMPROVANTE DE ENTREGA                                         PG. 1
+ ① Cliente: EMPÓRIO DO REI COM NOME BEM          NF: 0000018186
+            COMPRIDO DE EXEMPLO                  Pacotes: 10 caixas quadradas
+                                                          de queijo minas
+   Endereço: Av. Cassiano Ricardo, 521 - …       Pagamento: **Boleto**
    Nome: ____________________          Assinatura: ____________________
    RG ou CPF: ______________   Data de entrega: 16/10/2026   Horário: ___:___
                       LATICÍNIOS QUEIJOS DO REI LTDA
 ```
 
+- A coluna da direita tem a mesma largura em todos os comprovantes: **NF** em cima e **Pacotes** logo abaixo. Depois vem **Pagamento:** com a forma escolhida em negrito (ex.: Pagamento: **Pix**). Se o cliente estiver sem forma de pagamento, fica uma linha para preencher à mão.
+- Texto longo (cliente, pacotes, endereço) quebra nos espaços e continua na linha de baixo, alinhado depois do rótulo. Nada é cortado nem invade a outra coluna.
+- Cada comprovante tem a mesma altura mínima e só cresce se o texto precisar. Na hora de imprimir, o site mede a altura de cada um e coloca até 5 por página A4. Se um comprovante alto não couber, ele vai inteiro para a página seguinte.
 - **Nome, RG ou CPF e Assinatura** ficam em branco para quem recebe preencher.
 - **Data de entrega** já vem preenchida com a data da rota escolhida na tela inicial.
 - **Horário** fica em branco para o entregador preencher.
@@ -177,10 +195,10 @@ exemplos/                   modelos da planilha (.xlsx, .csv) e exemplo preenchi
 api/
   geocode_google.js         função da Vercel (servidor) que consulta o Google com a chave guardada
   _lib/google_geocoder.js   chamada à Geocoding API e leitura da precisão do resultado
-styles/                     main.css (tela) e print.css (comprovantes, relatório / PDF)
+styles/                     main.css (tela), receipts.css (comprovantes) e print.css (impressão)
 src/
   main.js                   inicializa as telas e as abas
-  config/                   configurações gerais, serviços do OSM e valores de referência de custo
+  config/                   configurações gerais, serviços do OSM, valores de referência de custo e formas de pagamento (payment_methods.js)
   parsing/
     romaneio_file_reader.js entrada única: escolhe o leitor pelo tipo de arquivo (.xlsx, .csv, .txt, colado)
     xlsx_reader.js          lê a primeira aba do Excel (sem bibliotecas)
@@ -189,6 +207,7 @@ src/
     romaneio_table.js       reconhece as colunas e monta as entregas, com avisos por linha
     text_decoder.js         lê texto em UTF-8 ou ANSI (Excel/Bloco de Notas antigos)
     txt_parser.js           formato antigo (.txt)
+    manual_entries.js       clientes digitados na tela → mesmas linhas da planilha
   maps/
     address_variants.js     simplifica o endereço (tira CEP, km, nome do comércio) para o OSM achar
     nominatim_client.js     busca de endereços (1 consulta/segundo)
@@ -217,7 +236,7 @@ src/
     whatsapp_message.js     mensagem para o entregador (inclui quando desligar a refrigeração)
     fuel_summary.js         textos de combustível, refrigeração e comparação com a rota mais rápida
     cost_tables.js          tabelas de custo previsto e real
-  ui/                       uma tela/componente por arquivo (inclui mapa da rota e seletor no mapa)
+  ui/                       uma tela/componente por arquivo (inclui mapa da rota, seletor no mapa e digitação de clientes)
   utils/                    formatação, horários, atalhos de página
 tests/                      testes automáticos (precisam de Node.js: npm test)
 ```

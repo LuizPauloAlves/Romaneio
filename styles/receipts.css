@@ -1,0 +1,107 @@
+/* ---------- Comprovantes de entrega ----------
+   Carregado na tela e na impressão: na tela serve só para medir a altura de cada
+   comprovante (fora da área visível) e decidir quantos cabem por página.
+
+   Página A4 montada à mão: cabeçalho (logo + PG. N), comprovantes e rodapé.
+   Na impressão a página não tem margem (definido em print_service.js): o espaçamento
+   fica no próprio bloco da página, e o navegador não imprime URL/data por cima. */
+
+.receipt-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+
+.receipt-page {
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  padding: 9mm 12mm 8mm;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  break-after: page;
+  background: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 1.25;
+  color: #000;
+}
+.receipt-page:last-child { break-after: auto; }
+.receipt-page * { box-sizing: border-box; }
+
+.receipt-header {
+  display: flex;
+  align-items: center;
+  gap: 5mm;
+  height: 24mm;
+  flex: none;
+  padding-bottom: 2mm;
+  border-bottom: 0.6mm solid #a51c24;
+}
+.receipt-logo { height: 21mm; width: auto; }
+.receipt-title { flex: 1; display: flex; flex-direction: column; gap: 1mm; }
+.receipt-title strong { font-size: 15pt; text-transform: uppercase; letter-spacing: 0.5pt; }
+.receipt-title span { font-size: 9.5pt; color: #444; }
+.receipt-page-number { align-self: flex-start; font-size: 11pt; font-weight: 700; }
+
+/* min-height: 0 mantém a lista do tamanho da página (para medir o espaço disponível). */
+.receipt-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3mm; padding-top: 4mm; }
+
+/* Altura mínima igual para todos; cresce se o nome, os pacotes ou o endereço ocuparem mais linhas. */
+.receipt {
+  position: relative;
+  flex: none;
+  min-height: 45mm;
+  padding: 2.5mm 4mm 3mm 11mm;
+  border: 0.3mm solid #000;
+  border-radius: 2mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2mm;
+  break-inside: avoid;
+}
+.receipt-number {
+  position: absolute;
+  left: 2.5mm;
+  top: 2.5mm;
+  width: 6mm;
+  height: 6mm;
+  border-radius: 50%;
+  background: #000;
+  color: #fff;
+  font-size: 8.5pt;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+/* Parte de cima: à esquerda Cliente e Endereço; à direita, coluna fixa com NF, Pacotes e Pagamento.
+   Texto longo quebra nos espaços e continua na linha de baixo, alinhado depois do rótulo. */
+.receipt-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66mm;
+  column-gap: 5mm;
+  row-gap: 1.8mm;
+}
+.receipt-side { display: flex; flex-direction: column; gap: 0.8mm; }
+.receipt-line { display: flex; align-items: baseline; gap: 1.5mm; margin: 0; min-width: 0; }
+.receipt-line > b { flex: none; }
+.receipt-text { flex: 1; min-width: 0; white-space: normal; overflow-wrap: break-word; }
+.receipt-text--strong { font-weight: 700; }
+.nowrap { white-space: nowrap; }
+
+.receipt-row { display: flex; align-items: flex-end; gap: 6mm; min-height: 8mm; }
+.receipt-field { display: flex; align-items: flex-end; gap: 1.5mm; white-space: nowrap; min-width: 0; }
+.receipt-field--grow { flex: 1; }
+
+.fill-line { display: inline-block; flex: 1; min-width: 25mm; height: 4mm; border-bottom: 0.3mm solid #000; }
+.receipt-line .fill-line { min-width: 20mm; }
+.fill-line--time { flex: 0 0 8mm; min-width: 8mm; }
+
+.receipt-footer {
+  flex: none;
+  padding-top: 2mm;
+  border-top: 0.3mm solid #999;
+  text-align: center;
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.6pt;
+}

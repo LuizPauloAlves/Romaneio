@@ -28,10 +28,11 @@ test('modelo CSV de exemplo vira 4 paradas com pacotes, NF e pagamento', async (
   assert.deepEqual(warnings, []);
   assert.equal(stops[0].client, 'CINTIA RAMOS DE PAULA "NEBLINA"');
   assert.equal(stops[0].address, 'Restaurante Neblina, Km 64 – Paraibuna – SP – CEP 12260-000');
+  assert.equal(stops[0].packages, '1 caixa');
   assert.equal(stops[0].nf, '0000018182');
-  assert.deepEqual(stops[0].payment, { cash: true, boleto: false });
-  assert.deepEqual(stops[1].payment, { cash: false, boleto: true });
+  assert.deepEqual(stops.map((stop) => stop.payment), ['cash', 'boleto', 'pix', 'card']);
   assert.equal(stops[1].details, '3 pacotes – NF 0000018183 – Boleto');
+  assert.equal(stops[3].details, '4 pacotes – NF 0000018185 – Cartão');
 });
 
 for (const fixture of ['romaneio_openpyxl.xlsx', 'romaneio_libreoffice.xlsx']) {
@@ -41,7 +42,7 @@ for (const fixture of ['romaneio_openpyxl.xlsx', 'romaneio_libreoffice.xlsx']) {
     assert.equal(stops.length, 4);
     assert.equal(stops[1].address, 'Av. Cassiano Ricardo, 521 - Parque Res. Aquarius, São José dos Campos - SP');
     assert.equal(stops[3].client, 'PADARIA OSWALDO CRUZ');
-    assert.ok(stops[0].payment.cash);
+    assert.equal(stops[0].payment, 'cash'); // planilha antiga: colunas "A vista"/"Boleto" com X
   });
 }
 
@@ -55,20 +56,42 @@ test('Excel: título acima do cabeçalho, números, CEP numérico e linha sem en
   assert.deepEqual(warnings, ['Linha 9 (SEM ENDERECO LTDA): sem endereço, ficou fora da rota.']);
 });
 
-test('avisa pagamento não marcado ou marcado duas vezes, e aceita x minúsculo', () => {
+test('modelo antigo: colunas "A vista"/"Boleto" com X continuam aceitas', () => {
   const { stops, warnings } = parse_romaneio_rows([
     ['CLIENTE', 'ENDEREÇO', 'À VISTA', 'BOLETO'],
     ['A', 'Rua 1', 'x', ''],
     ['B', 'Rua 2', '', ''],
     ['C', 'Rua 3', 'X', 'X'],
+    ['D', 'Rua 4', '', 'X'],
   ]);
-  assert.deepEqual(stops.map((stop) => stop.payment), [
-    { cash: true, boleto: false }, { cash: false, boleto: false }, { cash: true, boleto: true },
-  ]);
+  assert.deepEqual(stops.map((stop) => stop.payment), ['cash', '', '', 'boleto']);
   assert.deepEqual(warnings, [
-    'Linha 3 (B): forma de pagamento não marcada.',
+    'Linha 3 (B): forma de pagamento não informada.',
     'Linha 4 (C): marcado "A vista" e "Boleto" ao mesmo tempo.',
   ]);
+});
+
+test('coluna "Pagamento": aceita as cinco formas e avisa o que não reconhecer', () => {
+  const { stops, warnings } = parse_romaneio_rows([
+    ['Cliente', 'Endereço', 'Forma de pagamento'],
+    ['A', 'Rua 1', 'pix'],
+    ['B', 'Rua 2', 'Transferencia'],
+    ['C', 'Rua 3', ''],
+    ['D', 'Rua 4', 'Cheque'],
+  ]);
+  assert.deepEqual(stops.map((stop) => stop.payment), ['pix', 'transfer', '', '']);
+  assert.deepEqual(warnings, [
+    'Linha 4 (C): forma de pagamento não informada.',
+    'Linha 5 (D): forma de pagamento "Cheque" não reconhecida (use À vista, Boleto, Transferência, Pix, Cartão).',
+  ]);
+});
+
+test('Excel com a lista suspensa, gravado pelo LibreOffice', async () => {
+  const rows = await read_xlsx_rows(await load_buffer('./fixtures/romaneio_pagamento_libreoffice.xlsx'));
+  const { stops, warnings } = parse_romaneio_rows(rows);
+  assert.deepEqual(warnings, []);
+  assert.deepEqual(stops.map((stop) => stop.payment), ['pix', 'card', 'transfer', 'cash', 'boleto']);
+  assert.equal(stops[2].nf, '0000000003');
 });
 
 test('CEP com zero à esquerda perdido pelo Excel é corrigido', () => {

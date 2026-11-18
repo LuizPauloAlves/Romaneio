@@ -10,6 +10,7 @@ const KEYS = Object.freeze({
   vehicles: 'vehicles',
   routes: 'routes',
   geocode_cache: 'geocode_cache',
+  manual_entry: 'manual_entry',
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
@@ -71,6 +72,11 @@ export function delete_route(route_id) {
 // Cache de endereços já localizados (economiza cota do Google)
 export const get_geocode_cache = () => read(KEYS.geocode_cache, {});
 export const save_geocode_cache = (cache) => write(KEYS.geocode_cache, cache);
+
+// Clientes digitados na tela (rascunho) e a forma de entrada escolhida (planilha ou digitação)
+const DEFAULT_MANUAL_ENTRY = Object.freeze({ mode: 'file', entries: [] });
+export const get_manual_entry = () => ({ ...DEFAULT_MANUAL_ENTRY, ...read(KEYS.manual_entry, DEFAULT_MANUAL_ENTRY) });
+export const save_manual_entry = (manual_entry) => write(KEYS.manual_entry, manual_entry);
 
 // Backup completo
 export function export_all_data() {

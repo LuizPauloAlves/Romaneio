@@ -1,8 +1,11 @@
 // Transforma as linhas da planilha (CSV ou Excel) em paradas do romaneio.
 //
 // Colunas (a ordem não importa, maiúsculas e acentos também não):
-//   Cliente | Endereço | CEP (opcional) | Pacotes | NF | A vista | Boleto
-// "A vista" e "Boleto": marque com X a forma de pagamento.
+//   Cliente | Endereço | CEP (opcional) | Pacotes | NF | Pagamento
+// "Pagamento": À vista, Boleto, Transferência, Pix ou Cartão (lista em config/payment_methods.js).
+// Planilhas antigas, com as colunas "A vista" e "Boleto" marcadas com X, continuam aceitas.
+
+import { PAYMENT_LABEL_LIST, parse_payment, payment_label } from '../config/payment_methods.js';
 
 const COLUMN_ALIASES = Object.freeze({
   client: ['cliente', 'nome do cliente', 'destinatario'],
@@ -10,18 +13,20 @@ const COLUMN_ALIASES = Object.freeze({
   cep: ['cep'],
   packages: ['pacotes', 'pacote', 'volumes', 'volume', 'caixas', 'qtd', 'quantidade'],
   nf: ['nf', 'nota fiscal', 'nfe', 'nf e', 'numero nf', 'n nf'],
-  cash: ['a vista', 'avista'],
-  boleto: ['boleto'],
+  payment: ['pagamento', 'forma de pagamento', 'forma pagamento', 'pgto', 'forma pgto'],
+  legacy_cash: ['a vista', 'avista'],     // modelo antigo
+  legacy_boleto: ['boleto'],              // modelo antigo
 });
 
 const REQUIRED_COLUMNS = ['client', 'address'];
 const HEADER_SEARCH_ROWS = 10;
 const NOT_MARKED = new Set(['', '0', 'n', 'nao', 'falso', 'false', '-']);
 
-export const PAYMENT_LABELS = Object.freeze({ cash: 'À vista', boleto: 'Boleto' });
+const describe_sheet_row = (line_number) => `Linha ${line_number}`;
 
 // Retorna { stops, warnings }. Lança erro se não achar as colunas obrigatórias.
-export function parse_romaneio_rows(rows) {
+// describe_row: como chamar a linha nos avisos ("Linha 7" na planilha, "Cliente 6" na digitação).
+export function parse_romaneio_rows(rows, { describe_row = describe_sheet_row } = {}) {
   const header_index = rows.slice(0, HEADER_SEARCH_ROWS).findIndex((row) => has_required_columns(map_columns(row)));
   if (header_index === -1) {
     throw new Error('Não encontrei as colunas "Cliente" e "Endereço" na planilha. Use o modelo disponível no site.');
@@ -36,15 +41,15 @@ export function parse_romaneio_rows(rows) {
     const values = read_values(row, columns);
     if (Object.values(values).every((value) => value === '')) return;
 
-    const label = `Linha ${line_number}${values.client ? ` (${values.client})` : ''}`;
+    const label = `${describe_row(line_number)}${values.client ? ` (${values.client})` : ''}`;
     if (!values.address) {
       warnings.push(`${label}: sem endereço, ficou fora da rota.`);
       return;
     }
 
-    const stop = build_stop(values, stops.length + 1);
-    warnings.push(...payment_warnings(label, stop.payment));
-    stops.push(stop);
+    const { payment, warning } = read_payment(values, columns);
+    if (warning) warnings.push(`${label}: ${warning}`);
+    stops.push(build_stop(values, payment, stops.length + 1));
   });
 
   return { stops, warnings };
@@ -73,9 +78,8 @@ function read_values(row, columns) {
   return Object.fromEntries(Object.keys(COLUMN_ALIASES).map((field) => [field, String(row[columns[field]] ?? '').trim()]));
 }
 
-function build_stop(values, sequence) {
+function build_stop(values, payment, sequence) {
   const cep = format_cep(values.cep);
-  const payment = { cash: is_marked(values.cash), boleto: is_marked(values.boleto) };
   return {
     sequence,
     client: values.client,
@@ -84,16 +88,24 @@ function build_stop(values, sequence) {
     packages: values.packages,
     nf: values.nf,
     payment,
-    details: [describe_packages(values.packages), values.nf && `NF ${values.nf}`, describe_payment(payment)].filter(Boolean).join(' – '),
+    details: [describe_packages(values.packages), values.nf && `NF ${values.nf}`, payment_label(payment)].filter(Boolean).join(' – '),
     order_number: '',
     header: values.client,
   };
 }
 
-function payment_warnings(label, payment) {
-  if (payment.cash && payment.boleto) return [`${label}: marcado "A vista" e "Boleto" ao mesmo tempo.`];
-  if (!payment.cash && !payment.boleto) return [`${label}: forma de pagamento não marcada.`];
-  return [];
+// Coluna "Pagamento" (atual) ou colunas "A vista"/"Boleto" com X (modelo antigo).
+function read_payment(values, columns) {
+  if (columns.payment != null) {
+    const payment = parse_payment(values.payment);
+    if (payment === null) return { payment: '', warning: `forma de pagamento "${values.payment}" não reconhecida (use ${PAYMENT_LABEL_LIST}).` };
+    return { payment, warning: payment ? '' : 'forma de pagamento não informada.' };
+  }
+  const cash = is_marked(values.legacy_cash);
+  const boleto = is_marked(values.legacy_boleto);
+  if (cash && boleto) return { payment: '', warning: 'marcado "A vista" e "Boleto" ao mesmo tempo.' };
+  if (!cash && !boleto) return { payment: '', warning: 'forma de pagamento não informada.' };
+  return { payment: cash ? 'cash' : 'boleto', warning: '' };
 }
 
 function is_marked(value) {
@@ -120,9 +132,6 @@ function describe_packages(packages) {
   return `${packages} ${packages === '1' ? 'pacote' : 'pacotes'}`;
 }
 
-function describe_payment(payment) {
-  return [payment.cash && PAYMENT_LABELS.cash, payment.boleto && PAYMENT_LABELS.boleto].filter(Boolean).join(' + ');
-}
 
 function normalize_header(text) {
   return String(text ?? '')
